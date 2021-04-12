@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:shareloc/data/endpoint.dart';
+import 'package:shareloc/home_page.dart';
+import 'package:shareloc/models/room_participant.dart';
+import 'package:shareloc/services/room_service.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -14,7 +17,8 @@ const double CAMERA_BEARING = 0;
 
 class MapTracking extends StatefulWidget {
   final String roomCode;
-  MapTracking({Key key, this.roomCode}) : super(key: key);
+  final int participantId;
+  MapTracking({Key key, this.roomCode, this.participantId}) : super(key: key);
   @override
   _MapTrackingState createState() => _MapTrackingState();
 }
@@ -23,7 +27,8 @@ class _MapTrackingState extends State<MapTracking> {
   IO.Socket socket;
   LocationData currentLocation;
   Location location = new Location();
-
+  StreamSubscription<LocationData> locationSubscription;
+  List<RoomParticipant> listParticipants = [];
   Completer<GoogleMapController> _controller = Completer();
   Set<Marker> _markers = Set<Marker>();
 
@@ -32,12 +37,12 @@ class _MapTrackingState extends State<MapTracking> {
     super.initState();
     connectSocket();
     setInitialLocation();
-    location.onLocationChanged.listen((LocationData cLoc) {
+    locationSubscription =
+        location.onLocationChanged.listen((LocationData cLoc) {
       currentLocation = cLoc;
       updatePinOnMap();
-      print(currentLocation);
       socket.emit('updateLocation', <String, dynamic>{
-        "id": 1,
+        "id": widget.participantId,
         "latitude": currentLocation.latitude,
         "longitude": currentLocation.longitude
       });
@@ -51,8 +56,6 @@ class _MapTrackingState extends State<MapTracking> {
         'autoConnect': false,
       });
       socket.connect();
-      socket.on('message', (data) => print(data));
-      print(socket.connected);
     } catch (e) {
       print(e);
     }
@@ -89,6 +92,14 @@ class _MapTrackingState extends State<MapTracking> {
       _markers
           .add(Marker(markerId: MarkerId('sourcePin'), position: pinPosition));
     });
+  }
+
+// hmm-7355
+  void roomParticipantsUpdate() async {
+    var response = await getRoomParticipantsUpdate(widget.roomCode);
+    List<Map<String, dynamic>> _roomParticipants = response['roomParticipants'];
+    _roomParticipants
+        .map((value) => listParticipants.add(RoomParticipant.fromJson(value)));
   }
 
   @override
@@ -186,7 +197,10 @@ class _MapTrackingState extends State<MapTracking> {
                                       borderRadius:
                                           BorderRadius.circular(20.0)))),
                       onPressed: () {
-                        print('session end');
+                        Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (BuildContext context) => HomePage()));
                       },
                       child: Text(
                         'End Session',
@@ -208,6 +222,7 @@ class _MapTrackingState extends State<MapTracking> {
   @override
   void dispose() {
     // TODO: implement dispose
+    locationSubscription.cancel();
     super.dispose();
   }
 }
