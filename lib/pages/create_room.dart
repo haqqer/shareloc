@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:location/location.dart';
+import 'package:shareloc/models/room.dart';
+import 'package:shareloc/models/room_participant.dart';
+import 'package:shareloc/pages/map_tracking.dart';
+import 'package:shareloc/services/room_service.dart';
 
 class CreateRoomPage extends StatefulWidget {
   @override
@@ -6,7 +11,62 @@ class CreateRoomPage extends StatefulWidget {
 }
 
 class _CreateRoomPageState extends State<CreateRoomPage> {
-  TextEditingController roomCodeController = new TextEditingController();
+  TextEditingController userNameController = new TextEditingController();
+  TextEditingController roomNameController = new TextEditingController();
+  TextEditingController roomDescController = new TextEditingController();
+  bool isLoading = false;
+  LocationData currentLocation;
+  Location location = new Location();
+
+  Room room = new Room();
+  RoomParticipant roomParticipant = new RoomParticipant();
+  String roomCode;
+  int participantId;
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    setInitialLocation();
+  }
+
+  void setInitialLocation() async {
+    currentLocation = await location.getLocation();
+  }
+
+  void setValueToModel() {
+    print('sampai sini');
+    setState(() {
+      room = Room(
+          name: roomNameController.text,
+          desc: roomDescController.text,
+          code: '');
+      roomParticipant = RoomParticipant(
+          name: userNameController.text,
+          status: true,
+          latitude: currentLocation.latitude.toString(),
+          longitude: currentLocation.longitude.toString());
+    });
+  }
+
+  void createRoomAndJoin() async {
+    var result = await postRoomAndJoin(room, roomParticipant);
+    print(result['code']);
+    // roomCode = result['code'];
+    setState(() {
+      roomCode = result['code'].toString();
+      participantId = result['participantId'];
+      if (roomCode != null) {
+        isLoading = false;
+      }
+    });
+    Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+            builder: (BuildContext build) =>
+                MapTracking(roomCode: roomCode, participantId: participantId)),
+        (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,13 +86,42 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             ),
             TextField(
                 autofocus: true,
-                controller: roomCodeController,
+                controller: userNameController,
                 decoration: InputDecoration(
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     filled: true,
                     fillColor: Colors.white,
-                    hintText: 'room code',
+                    hintText: 'your name',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(30))))),
+            Divider(
+              height: 48,
+              thickness: 3,
+            ),
+            TextField(
+                autofocus: true,
+                controller: roomNameController,
+                decoration: InputDecoration(
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    filled: true,
+                    fillColor: Colors.white,
+                    hintText: 'room name',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(30))))),
+            SizedBox(
+              height: 20,
+            ),
+            TextField(
+                autofocus: true,
+                controller: roomDescController,
+                decoration: InputDecoration(
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    filled: true,
+                    fillColor: Colors.white,
+                    hintText: 'room desc',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(30))))),
             SizedBox(
@@ -48,13 +137,19 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(30)))),
                   onPressed: () {
-                    print('pressed');
+                    setState(() {
+                      isLoading = true;
+                    });
+                    setValueToModel();
+                    createRoomAndJoin();
                   },
-                  child: Text('Create Room',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                      ))),
+                  child: isLoading
+                      ? CircularProgressIndicator()
+                      : Text('Create Room',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                          ))),
             ),
             SizedBox(
               height: 32,
