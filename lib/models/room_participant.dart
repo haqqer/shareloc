@@ -12,13 +12,14 @@ class RoomParticipant {
       : id = json['id'],
         name = json['name'],
         status = json['status'],
-        latitude = json['latitude'],
-        longitude = json['longitude'];
+        latitude = json['latitude'] ?? '',
+        longitude = json['longitude'] ?? '';
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'status': status,
         'latitude': latitude,
-        'longitude': latitude,
+        'longitude': longitude,
       };
 }
