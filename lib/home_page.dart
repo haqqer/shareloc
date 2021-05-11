@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:location/location.dart';
+import 'package:provider/provider.dart';
+import 'package:shareloc/models/user_location.dart';
 import 'package:shareloc/pages/create_room.dart';
 import 'package:shareloc/pages/join_room.dart';
+import 'package:shareloc/services/room_service.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -10,37 +14,23 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Location location = new Location();
-  bool _serviceEnabled;
-  PermissionStatus _permissionGranted;
 
   TextEditingController roomCodeController = new TextEditingController();
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    getLocationPermission();
   }
 
-  void getLocationPermission() async {
-    _serviceEnabled = await location.serviceEnabled();
-    if (!_serviceEnabled) {
-      _serviceEnabled = await location.requestService();
-      if (!_serviceEnabled) {
-        return;
-      }
-    }
-    _permissionGranted = await location.hasPermission();
-    if (_permissionGranted == PermissionStatus.denied) {
-      _permissionGranted = await location.requestPermission();
-      if (_permissionGranted != PermissionStatus.granted) {
-        return;
-      }
-    }
+  Future<bool> checkRoomExist(String roomCode) async {
+    bool result = await RoomService.getRoomExist(roomCode);
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
+    var userLocation = context.watch<UserLocation>();
+    print(userLocation.latitude);
     return SafeArea(
       child: Scaffold(
         resizeToAvoidBottomInset: false,
@@ -58,6 +48,7 @@ class _HomePageState extends State<HomePage> {
               ),
               TextField(
                   controller: roomCodeController,
+                  keyboardType: TextInputType.visiblePassword,
                   decoration: InputDecoration(
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -80,12 +71,33 @@ class _HomePageState extends State<HomePage> {
                         shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.all(Radius.circular(24)))),
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (BuildContext context) => JoinRoomPage(
-                                  roomCode: roomCodeController.text)));
+                    onPressed: () async {
+                      bool room = await checkRoomExist(roomCodeController.text);
+                      if (room) {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (BuildContext context) => JoinRoomPage(
+                                    roomCode: roomCodeController.text)));
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: new Text('Room Not Found!'),
+                              content: new Text('Room with code never exist'),
+                              actions: <Widget>[
+                                new GestureDetector(
+                                  child: new Text("OK"),
+                                  onTap: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
                     },
                     child: Text('Join',
                         style: TextStyle(
@@ -129,7 +141,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 }
