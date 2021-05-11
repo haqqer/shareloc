@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
+import 'package:provider/provider.dart';
 import 'package:shareloc/models/room.dart';
 import 'package:shareloc/models/room_participant.dart';
+import 'package:shareloc/models/user_location.dart';
 import 'package:shareloc/pages/map_tracking.dart';
 import 'package:shareloc/services/room_service.dart';
 
@@ -15,8 +17,9 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   TextEditingController roomNameController = new TextEditingController();
   TextEditingController roomDescController = new TextEditingController();
   bool isLoading = false;
-  LocationData currentLocation;
-  Location location = new Location();
+  // LocationData currentLocation;
+  // Location location = new Location();
+  UserLocation userLocation = UserLocation();
 
   Room room = new Room();
   RoomParticipant roomParticipant = new RoomParticipant();
@@ -26,15 +29,14 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    setInitialLocation();
+    // setInitialLocation();
   }
 
-  void setInitialLocation() async {
-    currentLocation = await location.getLocation();
-  }
+  // void setInitialLocation() async {
+  //   currentLocation = await location.getLocation();
+  // }
 
   void setValueToModel() {
-    print('sampai sini');
     setState(() {
       room = Room(
           name: roomNameController.text,
@@ -43,15 +45,13 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       roomParticipant = RoomParticipant(
           name: userNameController.text,
           status: true,
-          latitude: currentLocation.latitude.toString(),
-          longitude: currentLocation.longitude.toString());
+          latitude: userLocation.latitude.toString(),
+          longitude: userLocation.longitude.toString());
     });
   }
 
   void createRoomAndJoin() async {
-    var result = await postRoomAndJoin(room, roomParticipant);
-    print(result['code']);
-    // roomCode = result['code'];
+    var result = await RoomService.postRoomAndJoin(room, roomParticipant);
     setState(() {
       roomCode = result['code'].toString();
       participantId = result['participantId'];
@@ -59,16 +59,18 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
         isLoading = false;
       }
     });
-    Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-            builder: (BuildContext build) =>
-                MapTracking(roomCode: roomCode, participantId: participantId)),
-        (route) => false);
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+          builder: (BuildContext build) =>
+              MapTracking(roomCode: roomCode, participantId: participantId)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    var _userLocation = Provider.of<UserLocation>(context);
+    userLocation = _userLocation;
     return Scaffold(
       appBar: AppBar(
         elevation: 3,
@@ -162,7 +164,6 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 }

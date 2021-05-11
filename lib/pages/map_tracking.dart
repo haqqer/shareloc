@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:shareloc/data/endpoint.dart';
 import 'package:shareloc/home_page.dart';
+import 'package:shareloc/models/room.dart';
 import 'package:shareloc/models/room_participant.dart';
 import 'package:shareloc/services/room_service.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
@@ -31,6 +32,7 @@ class _MapTrackingState extends State<MapTracking> {
   List<RoomParticipant> listParticipants = [];
   Completer<GoogleMapController> _controller = Completer();
   Set<Marker> _markers = Set<Marker>();
+  List<Marker> markers = [];
 
   @override
   void initState() {
@@ -39,8 +41,11 @@ class _MapTrackingState extends State<MapTracking> {
     setInitialLocation();
     locationSubscription =
         location.onLocationChanged.listen((LocationData cLoc) {
+      print('update data');
       currentLocation = cLoc;
       updatePinOnMap();
+      print(widget.participantId);
+      // roomParticipantsUpdate();
       socket.emit('updateLocation', <String, dynamic>{
         "id": widget.participantId,
         "latitude": currentLocation.latitude,
@@ -65,7 +70,50 @@ class _MapTrackingState extends State<MapTracking> {
     currentLocation = await location.getLocation();
   }
 
-  void showPinsOnMap() {
+  Future<bool> _onBackPressed() {
+    return showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Are you sure?'),
+            content: Text('Do you want to exit an App'),
+            actions: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(false),
+                  child: Text("NO"),
+                ),
+              ),
+              SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(true),
+                  child: Text("YES"),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  void showPinsOnMap() async {
+    print('tereksekusi');
+    var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
+    var _roomParticipants = response['roomParticipants'];
+    listParticipants = Room.parseParticipant(_roomParticipants);
+    print(listParticipants);
+    // listParticipants.map((e) => () {
+    //       final MarkerId markerId = MarkerId(e.id.toString());
+    //       final Marker marker = Marker(
+    //           markerId: markerId,
+    //           position:
+    //               LatLng(double.parse(e.latitude), double.parse(e.longitude)));
+    //       setState(() {
+    //         markers.add(marker);
+    //       });
+    //     });
     var pinPosition =
         LatLng(currentLocation.latitude, currentLocation.longitude);
     _markers.add(Marker(
@@ -81,25 +129,38 @@ class _MapTrackingState extends State<MapTracking> {
       bearing: CAMERA_BEARING,
       target: LatLng(currentLocation.latitude, currentLocation.longitude),
     );
-
+    var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
+    var _roomParticipants = response['roomParticipants'];
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(cPosition));
-
+    listParticipants = Room.parseParticipant(_roomParticipants);
+    var _temp = listParticipants;
     setState(() {
       var pinPosition =
           LatLng(currentLocation.latitude, currentLocation.longitude);
       _markers.removeWhere((m) => m.markerId.value == 'sourcePin');
       _markers
           .add(Marker(markerId: MarkerId('sourcePin'), position: pinPosition));
+      listParticipants.map((e) => () {
+            _markers.removeWhere((m) => m.markerId.value == e.id.toString());
+          });
+      //   listParticipants.map((e) => () {
+      //         _markers.add(Marker(
+      //             markerId: MarkerId(e.id.toString()),
+      //             position: LatLng(
+      //                 double.parse(e.latitude), double.parse(e.longitude))));
+      //       });
     });
   }
 
 // hmm-7355
   void roomParticipantsUpdate() async {
-    var response = await getRoomParticipantsUpdate(widget.roomCode);
-    List<Map<String, dynamic>> _roomParticipants = response['roomParticipants'];
-    _roomParticipants
-        .map((value) => listParticipants.add(RoomParticipant.fromJson(value)));
+    var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
+    var _roomParticipants = response['roomParticipants'];
+    setState(() {
+      listParticipants = Room.parseParticipant(_roomParticipants);
+      listParticipants.map((e) => () {});
+    });
   }
 
   @override
@@ -114,107 +175,114 @@ class _MapTrackingState extends State<MapTracking> {
       initialCameraPosition = CameraPosition(
           target: LatLng(currentLocation.latitude, currentLocation.longitude));
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('ShareLoc'),
-      ),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: initialCameraPosition,
-            myLocationEnabled: true,
-            markers: _markers,
-            mapType: MapType.normal,
-            onMapCreated: (GoogleMapController controller) {
-              _controller.complete(controller);
-              showPinsOnMap();
-            },
-          ),
-          SlidingUpPanel(
-            isDraggable: false,
-            minHeight: MediaQuery.of(context).size.height * 0.23,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            collapsed: Container(
-              padding: EdgeInsets.all(8),
-              width: MediaQuery.of(context).size.width,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.only(top: 8, bottom: 8),
-                    child: Text('Room Code below :'),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Expanded(
-                          flex: 3,
+
+    return WillPopScope(
+      onWillPop: _onBackPressed,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('ShareLoc'),
+        ),
+        body: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: initialCameraPosition,
+              myLocationEnabled: true,
+              // markers: Set.from(markers),
+              markers: _markers,
+              mapType: MapType.normal,
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+                showPinsOnMap();
+              },
+            ),
+            SlidingUpPanel(
+              isDraggable: false,
+              minHeight: MediaQuery.of(context).size.height * 0.23,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              collapsed: Container(
+                padding: EdgeInsets.all(8),
+                width: MediaQuery.of(context).size.width,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.only(top: 8, bottom: 8),
+                      child: Text('Room Code below :'),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                            flex: 3,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 8),
+                              child: Center(
+                                child: Text(widget.roomCode,
+                                    style:
+                                        Theme.of(context).textTheme.headline6),
+                              ),
+                            )),
+                        Expanded(
+                          flex: 1,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 8, horizontal: 8),
-                            child: Center(
-                              child: Text(widget.roomCode,
-                                  style: Theme.of(context).textTheme.headline6),
+                            child: GestureDetector(
+                              child: Icon(Icons.copy),
+                              onTap: () {
+                                FlutterClipboard.copy(widget.roomCode)
+                                    .then((value) {
+                                  final snackBar = SnackBar(
+                                    content: Text('Copied to Clipboard'),
+                                    action: SnackBarAction(
+                                      label: 'Ok',
+                                      onPressed: () {},
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(snackBar);
+                                });
+                              },
                             ),
-                          )),
-                      Expanded(
-                        flex: 1,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 8),
-                          child: GestureDetector(
-                            child: Icon(Icons.copy),
-                            onTap: () {
-                              FlutterClipboard.copy(widget.roomCode)
-                                  .then((value) {
-                                final snackBar = SnackBar(
-                                  content: Text('Copied to Clipboard'),
-                                  action: SnackBarAction(
-                                    label: 'Ok',
-                                    onPressed: () {},
-                                  ),
-                                );
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(snackBar);
-                              });
-                            },
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.80,
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ElevatedButton(
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStateProperty.all<Color>(Colors.red),
-                          shape:
-                              MaterialStateProperty.all<RoundedRectangleBorder>(
-                                  RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(20.0)))),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (BuildContext context) => HomePage()));
-                      },
-                      child: Text(
-                        'End Session',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      ],
                     ),
-                  )
-                ],
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.80,
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStateProperty.all<Color>(Colors.red),
+                            shape: MaterialStateProperty.all<
+                                    RoundedRectangleBorder>(
+                                RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(20.0)))),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      HomePage()));
+                        },
+                        child: Text(
+                          'End Session',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
               ),
-            ),
-            panel: Center(child: Text('hello')),
-          )
-        ],
+              panel: Center(child: Text('hello')),
+            )
+          ],
+        ),
       ),
     );
   }

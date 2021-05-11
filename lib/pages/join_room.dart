@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shareloc/models/room_participant.dart';
+import 'package:shareloc/models/user_location.dart';
 import 'package:shareloc/pages/map_tracking.dart';
+import 'package:shareloc/services/room_service.dart';
 
 class JoinRoomPage extends StatefulWidget {
   final String roomCode;
@@ -9,9 +13,51 @@ class JoinRoomPage extends StatefulWidget {
 }
 
 class _JoinRoomPageState extends State<JoinRoomPage> {
+  bool isLoading = false;
+  UserLocation userLocation = UserLocation();
+
+  RoomParticipant roomParticipant = new RoomParticipant();
   TextEditingController nameController = new TextEditingController();
+  int participantId;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  void setValueToModel() {
+    setState(() {
+      roomParticipant = RoomParticipant(
+          name: nameController.text,
+          status: true,
+          latitude: userLocation.latitude.toString(),
+          longitude: userLocation.longitude.toString());
+    });
+  }
+
+  void joinRoom() async {
+    var result =
+        await RoomService.postJoinRoom(widget.roomCode, roomParticipant);
+    // participantId = result['id'];
+    print(result);
+    setState(() {
+      participantId = result['id'];
+      if (participantId != null) {
+        isLoading = false;
+      }
+    });
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+          builder: (BuildContext build) => MapTracking(
+              roomCode: widget.roomCode, participantId: participantId)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    var _userLocation = Provider.of<UserLocation>(context);
+    userLocation = _userLocation;
     return SafeArea(
       child: Scaffold(
         resizeToAvoidBottomInset: false,
@@ -55,12 +101,19 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
                             borderRadius:
                                 BorderRadius.all(Radius.circular(24)))),
                     onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                              builder: (BuildContext context) =>
-                                  MapTracking(roomCode: widget.roomCode)),
-                          (route) => false);
+                      setState(() {
+                        isLoading = true;
+                      });
+                      setValueToModel();
+                      joinRoom();
+                      // print(participantId);
+                      // Navigator.pushReplacement(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //       builder: (BuildContext context) => MapTracking(
+                      //           roomCode: widget.roomCode,
+                      //           participantId: participantId)),
+                      // );
                     },
                     child: Text('Join',
                         style: TextStyle(
@@ -78,7 +131,6 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 }
