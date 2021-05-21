@@ -2,7 +2,7 @@
     package="com.haqqer.location_share_app">
    <application
         android:label="location_share_app"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         
         <activity
             android:name=".MainActivity"
