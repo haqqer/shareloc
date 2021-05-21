@@ -77,6 +77,7 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
               ),
               TextField(
                   autofocus: true,
+                  maxLength: 5,
                   controller: nameController,
                   decoration: InputDecoration(
                       contentPadding:

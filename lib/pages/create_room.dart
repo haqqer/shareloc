@@ -88,6 +88,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             ),
             TextField(
                 autofocus: true,
+                maxLength: 5,
                 controller: userNameController,
                 decoration: InputDecoration(
                     contentPadding:
