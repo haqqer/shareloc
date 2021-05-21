@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
@@ -11,8 +13,9 @@ import 'package:shareloc/models/room_participant.dart';
 import 'package:shareloc/services/room_service.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:ui' as ui;
 
-const double CAMERA_ZOOM = 18;
+const double CAMERA_ZOOM = 14;
 const double CAMERA_TILT = 0;
 const double CAMERA_BEARING = 0;
 
@@ -32,7 +35,7 @@ class _MapTrackingState extends State<MapTracking> {
   List<RoomParticipant> listParticipants = [];
   Completer<GoogleMapController> _controller = Completer();
   Set<Marker> _markers = Set<Marker>();
-  List<Marker> markers = [];
+  Set<Marker> markers = {};
 
   @override
   void initState() {
@@ -44,7 +47,6 @@ class _MapTrackingState extends State<MapTracking> {
       print('update data');
       currentLocation = cLoc;
       updatePinOnMap();
-      print(widget.participantId);
       // roomParticipantsUpdate();
       socket.emit('updateLocation', <String, dynamic>{
         "id": widget.participantId,
@@ -70,56 +72,66 @@ class _MapTrackingState extends State<MapTracking> {
     currentLocation = await location.getLocation();
   }
 
-  Future<bool> _onBackPressed() {
+  void quitRoom() async {
+    bool result =
+        await RoomService.updateQuitRoom(widget.roomCode, widget.participantId);
+    if (!result) {
+      Navigator.of(context).pop(false);
+    } else {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  quitDialog() {
     return showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Are you sure?'),
-            content: Text('Do you want to exit an App'),
-            actions: <Widget>[
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(false),
-                  child: Text("NO"),
-                ),
-              ),
-              SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(true),
-                  child: Text("YES"),
-                ),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Are you sure?'),
+        content: Text('Do you want to exit an App'),
+        actions: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(false),
+              child: Text("NO"),
+            ),
           ),
-        ) ??
-        false;
+          SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GestureDetector(
+              onTap: () {
+                quitRoom();
+                Navigator.of(context).pop(true);
+              },
+              child: Text("YES"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _onBackPressed() {
+    return quitDialog() ?? false;
   }
 
   void showPinsOnMap() async {
-    print('tereksekusi');
     var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
     var _roomParticipants = response['roomParticipants'];
     listParticipants = Room.parseParticipant(_roomParticipants);
-    print(listParticipants);
-    // listParticipants.map((e) => () {
-    //       final MarkerId markerId = MarkerId(e.id.toString());
-    //       final Marker marker = Marker(
-    //           markerId: markerId,
-    //           position:
-    //               LatLng(double.parse(e.latitude), double.parse(e.longitude)));
-    //       setState(() {
-    //         markers.add(marker);
-    //       });
-    //     });
-    var pinPosition =
-        LatLng(currentLocation.latitude, currentLocation.longitude);
-    _markers.add(Marker(
-      markerId: MarkerId('sourcePin'),
-      position: pinPosition,
-    ));
+    for (var e in listParticipants) {
+      Uint8List customTextMarker;
+      customTextMarker = await getBytesFromCanvas(e.name);
+      setState(() {
+        final MarkerId markerId = MarkerId(e.id.toString());
+        markers.add(Marker(
+            markerId: markerId,
+            icon: BitmapDescriptor.fromBytes(customTextMarker),
+            position:
+                LatLng(double.parse(e.latitude), double.parse(e.longitude))));
+      });
+    }
   }
 
   void updatePinOnMap() async {
@@ -132,35 +144,45 @@ class _MapTrackingState extends State<MapTracking> {
     var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
     var _roomParticipants = response['roomParticipants'];
     final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(cPosition));
+    // controller.animateCamera(CameraUpdate.newCameraPosition(cPosition));
     listParticipants = Room.parseParticipant(_roomParticipants);
-    var _temp = listParticipants;
-    setState(() {
-      var pinPosition =
-          LatLng(currentLocation.latitude, currentLocation.longitude);
-      _markers.removeWhere((m) => m.markerId.value == 'sourcePin');
-      _markers
-          .add(Marker(markerId: MarkerId('sourcePin'), position: pinPosition));
-      listParticipants.map((e) => () {
-            _markers.removeWhere((m) => m.markerId.value == e.id.toString());
-          });
-      //   listParticipants.map((e) => () {
-      //         _markers.add(Marker(
-      //             markerId: MarkerId(e.id.toString()),
-      //             position: LatLng(
-      //                 double.parse(e.latitude), double.parse(e.longitude))));
-      //       });
-    });
+    markers = {};
+    for (var e in listParticipants) {
+      Uint8List customTextMarker;
+      customTextMarker = await getBytesFromCanvas(e.name);
+      setState(() {
+        final MarkerId markerId = MarkerId(e.id.toString());
+        markers.add(Marker(
+            markerId: markerId,
+            icon: BitmapDescriptor.fromBytes(customTextMarker),
+            position:
+                LatLng(double.parse(e.latitude), double.parse(e.longitude))));
+      });
+    }
   }
 
-// hmm-7355
-  void roomParticipantsUpdate() async {
-    var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
-    var _roomParticipants = response['roomParticipants'];
-    setState(() {
-      listParticipants = Room.parseParticipant(_roomParticipants);
-      listParticipants.map((e) => () {});
-    });
+  Future<Uint8List> getBytesFromCanvas(String text) async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint1 = Paint()
+      ..color = Colors.primaries[Random().nextInt(Colors.primaries.length)];
+    final int size = 100; //change this according to your app
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 2.0, paint1);
+    TextPainter painter = TextPainter(textDirection: TextDirection.ltr);
+    painter.text = TextSpan(
+      text: text, //you can write your own text here or take from parameter
+      style: TextStyle(
+          fontSize: size / 4, color: Colors.black, fontWeight: FontWeight.bold),
+    );
+    painter.layout();
+    painter.paint(
+      canvas,
+      Offset(size / 2 - painter.width / 2, size / 2 - painter.height / 2),
+    );
+
+    final img = await pictureRecorder.endRecording().toImage(size, size);
+    final data = await img.toByteData(format: ui.ImageByteFormat.png);
+    return data.buffer.asUint8List();
   }
 
   @override
@@ -187,8 +209,8 @@ class _MapTrackingState extends State<MapTracking> {
             GoogleMap(
               initialCameraPosition: initialCameraPosition,
               myLocationEnabled: true,
-              // markers: Set.from(markers),
-              markers: _markers,
+              markers: markers,
+              // markers: _markers,
               mapType: MapType.normal,
               onMapCreated: (GoogleMapController controller) {
                 _controller.complete(controller);
@@ -263,11 +285,7 @@ class _MapTrackingState extends State<MapTracking> {
                                     borderRadius:
                                         BorderRadius.circular(20.0)))),
                         onPressed: () {
-                          Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (BuildContext context) =>
-                                      HomePage()));
+                          quitDialog();
                         },
                         child: Text(
                           'End Session',
