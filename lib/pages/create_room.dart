@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:shareloc/models/room.dart';
 import 'package:shareloc/models/room_participant.dart';
@@ -17,8 +16,6 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   TextEditingController roomNameController = new TextEditingController();
   TextEditingController roomDescController = new TextEditingController();
   bool isLoading = false;
-  // LocationData currentLocation;
-  // Location location = new Location();
   UserLocation userLocation = UserLocation();
 
   Room room = new Room();
@@ -27,14 +24,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   int participantId;
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    // setInitialLocation();
   }
-
-  // void setInitialLocation() async {
-  //   currentLocation = await location.getLocation();
-  // }
 
   void setValueToModel() {
     setState(() {
@@ -45,8 +36,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       roomParticipant = RoomParticipant(
           name: userNameController.text,
           status: true,
-          latitude: userLocation.latitude.toString(),
-          longitude: userLocation.longitude.toString());
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude);
     });
   }
 

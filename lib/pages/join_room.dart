@@ -30,16 +30,14 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
       roomParticipant = RoomParticipant(
           name: nameController.text,
           status: true,
-          latitude: userLocation.latitude.toString(),
-          longitude: userLocation.longitude.toString());
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude);
     });
   }
 
   void joinRoom() async {
     var result =
         await RoomService.postJoinRoom(widget.roomCode, roomParticipant);
-    // participantId = result['id'];
-    print(result);
     setState(() {
       participantId = result['id'];
       if (participantId != null) {
@@ -107,14 +105,6 @@ class _JoinRoomPageState extends State<JoinRoomPage> {
                       });
                       setValueToModel();
                       joinRoom();
-                      // print(participantId);
-                      // Navigator.pushReplacement(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //       builder: (BuildContext context) => MapTracking(
-                      //           roomCode: widget.roomCode,
-                      //           participantId: participantId)),
-                      // );
                     },
                     child: Text('Join',
                         style: TextStyle(
