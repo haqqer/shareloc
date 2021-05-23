@@ -2,8 +2,8 @@ class RoomParticipant {
   int id;
   String name;
   bool status;
-  String latitude;
-  String longitude;
+  double latitude;
+  double longitude;
 
   RoomParticipant(
       {this.id, this.name, this.status, this.latitude, this.longitude});
@@ -12,8 +12,8 @@ class RoomParticipant {
       : id = json['id'],
         name = json['name'],
         status = json['status'],
-        latitude = json['latitude'] ?? '',
-        longitude = json['longitude'] ?? '';
+        latitude = json['latitude'] as double ?? '',
+        longitude = json['longitude'] as double ?? '';
 
   Map<String, dynamic> toJson() => {
         'id': id,
