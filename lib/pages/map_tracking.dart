@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:shareloc/data/endpoint.dart';
-import 'package:shareloc/home_page.dart';
 import 'package:shareloc/models/room.dart';
 import 'package:shareloc/models/room_participant.dart';
 import 'package:shareloc/services/room_service.dart';
@@ -34,7 +33,6 @@ class _MapTrackingState extends State<MapTracking> {
   StreamSubscription<LocationData> locationSubscription;
   List<RoomParticipant> listParticipants = [];
   Completer<GoogleMapController> _controller = Completer();
-  Set<Marker> _markers = Set<Marker>();
   Set<Marker> markers = {};
 
   @override
@@ -44,10 +42,8 @@ class _MapTrackingState extends State<MapTracking> {
     setInitialLocation();
     locationSubscription =
         location.onLocationChanged.listen((LocationData cLoc) {
-      print('update data');
       currentLocation = cLoc;
       updatePinOnMap();
-      // roomParticipantsUpdate();
       socket.emit('updateLocation', <String, dynamic>{
         "id": widget.participantId,
         "latitude": currentLocation.latitude,
@@ -128,22 +124,21 @@ class _MapTrackingState extends State<MapTracking> {
         markers.add(Marker(
             markerId: markerId,
             icon: BitmapDescriptor.fromBytes(customTextMarker),
-            position:
-                LatLng(double.parse(e.latitude), double.parse(e.longitude))));
+            position: LatLng(e.latitude, e.longitude)));
       });
     }
   }
 
   void updatePinOnMap() async {
-    CameraPosition cPosition = CameraPosition(
-      zoom: CAMERA_ZOOM,
-      tilt: CAMERA_TILT,
-      bearing: CAMERA_BEARING,
-      target: LatLng(currentLocation.latitude, currentLocation.longitude),
-    );
+    // CameraPosition cPosition = CameraPosition(
+    //   zoom: CAMERA_ZOOM,
+    //   tilt: CAMERA_TILT,
+    //   bearing: CAMERA_BEARING,
+    //   target: LatLng(currentLocation.latitude, currentLocation.longitude),
+    // );
     var response = await RoomService.getRoomParticipantsUpdate(widget.roomCode);
     var _roomParticipants = response['roomParticipants'];
-    final GoogleMapController controller = await _controller.future;
+    // final GoogleMapController controller = await _controller.future;
     // controller.animateCamera(CameraUpdate.newCameraPosition(cPosition));
     listParticipants = Room.parseParticipant(_roomParticipants);
     markers = {};
@@ -155,8 +150,7 @@ class _MapTrackingState extends State<MapTracking> {
         markers.add(Marker(
             markerId: markerId,
             icon: BitmapDescriptor.fromBytes(customTextMarker),
-            position:
-                LatLng(double.parse(e.latitude), double.parse(e.longitude))));
+            position: LatLng(e.latitude, e.longitude)));
       });
     }
   }
@@ -288,7 +282,7 @@ class _MapTrackingState extends State<MapTracking> {
                           quitDialog();
                         },
                         child: Text(
-                          'End Session',
+                          'Quit Room',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
@@ -307,7 +301,6 @@ class _MapTrackingState extends State<MapTracking> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     locationSubscription.cancel();
     super.dispose();
   }
