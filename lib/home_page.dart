@@ -117,6 +117,7 @@ class _HomePageState extends State<HomePage> {
                             borderRadius:
                                 BorderRadius.all(Radius.circular(30)))),
                     onPressed: () {
+                      roomCodeController.text = '';
                       Navigator.push(
                           context,
                           MaterialPageRoute(
