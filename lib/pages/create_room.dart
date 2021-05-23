@@ -63,6 +63,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     var _userLocation = Provider.of<UserLocation>(context);
     userLocation = _userLocation;
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         elevation: 3,
       ),
@@ -79,7 +80,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             ),
             TextField(
                 autofocus: true,
-                maxLength: 5,
+                maxLength: 6,
                 controller: userNameController,
                 decoration: InputDecoration(
                     contentPadding:
@@ -90,12 +91,13 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(30))))),
             Divider(
-              height: 48,
+              height: 36,
               thickness: 3,
             ),
             TextField(
                 autofocus: true,
                 controller: roomNameController,
+                maxLength: 6,
                 decoration: InputDecoration(
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -119,7 +121,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(30))))),
             SizedBox(
-              height: 24,
+              height: 20,
             ),
             SizedBox(
               width: MediaQuery.of(context).size.width -
