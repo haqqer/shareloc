@@ -16,6 +16,7 @@ class _HomePageState extends State<HomePage> {
   Location location = new Location();
 
   TextEditingController roomCodeController = new TextEditingController();
+  String roomCode = '';
 
   @override
   void initState() {
@@ -73,12 +74,14 @@ class _HomePageState extends State<HomePage> {
                                 BorderRadius.all(Radius.circular(24)))),
                     onPressed: () async {
                       bool room = await checkRoomExist(roomCodeController.text);
+                      roomCode = roomCodeController.text;
+                      roomCodeController.text = '';
                       if (room) {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (BuildContext context) => JoinRoomPage(
-                                    roomCode: roomCodeController.text)));
+                                builder: (BuildContext context) =>
+                                    JoinRoomPage(roomCode: roomCode)));
                       } else {
                         showDialog(
                           context: context,
