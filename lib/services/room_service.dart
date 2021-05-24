@@ -53,7 +53,7 @@ class RoomService {
   static Future<Map<String, dynamic>> getRoomParticipantsUpdate(
       String code) async {
     try {
-      var response = await request().get('/room/code/' + code);
+      var response = await request().get('/room/code/' + code + '?status=1');
       return response.data['data'];
     } catch (e) {
       print(e);
