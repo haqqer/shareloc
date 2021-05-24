@@ -28,6 +28,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   }
 
   void setValueToModel() {
+    room = Room();
+    roomParticipant = RoomParticipant();
     setState(() {
       room = Room(
           name: roomNameController.text,
