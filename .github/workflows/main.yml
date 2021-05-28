@@ -7,9 +7,7 @@ on:
 jobs:
   build-android:
     name: Build APK
-    runs-on: ubuntu-latest
-    env: 
-      API_KEY: ${{ secrets.API_KEY }}
+    runs-on: ubuntu-latests
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-java@v1
