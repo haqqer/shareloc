@@ -2,7 +2,8 @@
     package="com.haqqer.location_share_app">
    <application
         android:label="ShareLoc"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
         
         <activity
             android:name=".MainActivity"
